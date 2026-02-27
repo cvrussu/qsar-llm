@@ -1,6 +1,6 @@
 """
 QSAR LLM Backend — UranoIA
-API Flask que conecta el frontend con el OECD QSAR Toolbox y Ollama
+API Flask que conecta el frontend con el OECD QSAR Toolbox y Claude AI
 Autor: UranoIA / Claudio Valdés Russu
 Versión: 1.0.0-beta
 """
@@ -15,6 +15,7 @@ from functools import wraps
 from typing import Optional
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import anthropic
 
 # ──────────────────────────────────────────────
 # CONFIG
@@ -31,9 +32,8 @@ CORS(app, origins=["*"])  # Adjust for production
 # QSAR Toolbox REST API base URL (local installation)
 TOOLBOX_URL = os.environ.get("TOOLBOX_URL", "http://localhost:3000")
 
-# Ollama configuration
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "mistral")
+# Anthropic API key
+ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ──────────────────────────────────────────────
 # AUTH MIDDLEWARE (optional)
@@ -62,10 +62,9 @@ def index():
 # ──────────────────────────────────────────────
 @app.route("/api/status")
 def status():
-    """Check connectivity with QSAR Toolbox and Ollama."""
+    """Check connectivity with QSAR Toolbox and report version."""
     toolbox_ok = False
     toolbox_version = "4.8"
-    ollama_ok = False
 
     try:
         r = requests.get(f"{TOOLBOX_URL}/api/v1/version", timeout=4)
@@ -76,19 +75,11 @@ def status():
     except Exception:
         pass
 
-    try:
-        r = requests.get(f"{OLLAMA_URL}/api/tags", timeout=4)
-        if r.ok:
-            ollama_ok = True
-    except Exception:
-        pass
-
     return jsonify({
         "status": "online",
         "version": toolbox_version,
         "toolbox_connected": toolbox_ok,
-        "ollama_connected": ollama_ok,
-        "ollama_model": OLLAMA_MODEL,
+        "anthropic_configured": bool(ANTHROPIC_KEY),
         "timestamp": datetime.utcnow().isoformat(),
     })
 
@@ -290,11 +281,12 @@ def build_llm_prompt(query: str, toolbox_results: dict, language: str) -> str:
 @app.route("/api/chat", methods=["POST"])
 @require_key
 def chat():
-    """Main chat endpoint: orchestrates Toolbox + Ollama."""
+    """Main chat endpoint: orchestrates Toolbox + Claude."""
     try:
         body = request.get_json(force=True)
         query = body.get("query", "").strip()
         options = body.get("options", {})
+        model = body.get("model", "claude-sonnet-4-6")
         language = body.get("language", "es")
 
         if not query:
@@ -308,25 +300,19 @@ def chat():
         # Step 2: Build prompt
         user_prompt = build_llm_prompt(query, toolbox_results, language)
 
-        # Step 3: Call Ollama
-        try:
-            full_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
-            response = requests.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": full_prompt,
-                    "stream": False,
-                    "temperature": 0.7,
-                },
-                timeout=120
-            )
-            response.raise_for_status()
-            response_data = response.json()
-            response_text = response_data.get("response", "No response from Ollama")
-        except Exception as e:
-            log.error(f"Ollama error: {e}")
-            return jsonify({"error": f"Error de Ollama: {str(e)}"}), 502
+        # Step 3: Call Claude
+        if not ANTHROPIC_KEY:
+            return jsonify({"error": "ANTHROPIC_API_KEY no configurado"}), 503
+
+        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+        message = client.messages.create(
+            model=model,
+            max_tokens=2048,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+
+        response_text = message.content[0].text
 
         # Step 4: Build structured card data (if molecule found)
         card_data = None
@@ -367,6 +353,9 @@ def chat():
             "timestamp": datetime.utcnow().isoformat(),
         })
 
+    except anthropic.APIError as e:
+        log.error(f"Anthropic API error: {e}")
+        return jsonify({"error": f"Error de API: {str(e)}"}), 502
     except Exception as e:
         log.error(f"Unexpected error: {e}", exc_info=True)
         return jsonify({"error": "Error interno del servidor"}), 500
@@ -450,8 +439,7 @@ if __name__ == "__main__":
     log.info("  QSAR LLM — UranoIA Backend")
     log.info(f"  Puerto: {port}")
     log.info(f"  QSAR Toolbox URL: {TOOLBOX_URL}")
-    log.info(f"  Ollama URL: {OLLAMA_URL}")
-    log.info(f"  Ollama Model: {OLLAMA_MODEL}")
+    log.info(f"  Anthropic API: {'✓ Configurado' if ANTHROPIC_KEY else '✗ Falta ANTHROPIC_API_KEY'}")
     log.info("=" * 60)
 
     app.run(host="0.0.0.0", port=port, debug=debug)
