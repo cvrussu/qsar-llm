@@ -16,7 +16,6 @@ from typing import Optional
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import google.generativeai as genai
-import anthropic
 
 # ──────────────────────────────────────────────
 # CONFIG
