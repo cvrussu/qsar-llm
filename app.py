@@ -15,6 +15,8 @@ from functools import wraps
 from typing import Optional
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import google.generativeai as genai
 
 # ──────────────────────────────────────────────
@@ -62,6 +64,7 @@ def status():
     """Check connectivity with QSAR Toolbox and report version."""
     toolbox_ok = False
     toolbox_version = "4.8"
+    toolbox_error = None
 
     try:
         r = requests.get(f"{TOOLBOX_URL}/api/v1/version", timeout=4)
@@ -69,40 +72,119 @@ def status():
             toolbox_ok = True
             data = r.json()
             toolbox_version = data.get("version", "4.8")
-    except Exception:
-        pass
+    except requests.exceptions.ConnectionError:
+        toolbox_error = f"No se puede conectar a QSAR Toolbox en {TOOLBOX_URL}"
+    except requests.exceptions.Timeout:
+        toolbox_error = f"Timeout conectando a {TOOLBOX_URL}"
+    except Exception as e:
+        toolbox_error = str(e)
 
     return jsonify({
         "status": "online",
         "version": toolbox_version,
         "toolbox_connected": toolbox_ok,
+        "toolbox_url": TOOLBOX_URL,
+        "toolbox_error": toolbox_error,
         "gemini_configured": bool(GEMINI_KEY),
         "timestamp": datetime.utcnow().isoformat(),
     })
+
+
+@app.route("/api/toolbox/health")
+def toolbox_health():
+    """Detailed health check for QSAR Toolbox."""
+    health_info = {
+        "toolbox_url": TOOLBOX_URL,
+        "checks": {
+            "connectivity": False,
+            "version": None,
+            "profilers": False,
+            "substances": False
+        },
+        "errors": []
+    }
+
+    # Check basic connectivity
+    try:
+        r = requests.get(f"{TOOLBOX_URL}/api/v1/version", timeout=5)
+        if r.ok:
+            health_info["checks"]["connectivity"] = True
+            data = r.json()
+            health_info["checks"]["version"] = data.get("version")
+    except Exception as e:
+        health_info["errors"].append(f"Versión check falló: {str(e)}")
+
+    # Check profilers endpoint
+    try:
+        r = requests.get(f"{TOOLBOX_URL}/api/v1/profiling/available", timeout=5)
+        if r.ok:
+            health_info["checks"]["profilers"] = True
+    except Exception as e:
+        health_info["errors"].append(f"Profilers endpoint no disponible: {str(e)}")
+
+    # Check substances search
+    try:
+        r = requests.get(f"{TOOLBOX_URL}/api/v1/substances/search?query=test", timeout=5)
+        if r.ok:
+            health_info["checks"]["substances"] = True
+    except Exception as e:
+        health_info["errors"].append(f"Substances endpoint no disponible: {str(e)}")
+
+    health_status = "healthy" if health_info["checks"]["connectivity"] else "unhealthy"
+    return jsonify({"status": health_status, **health_info})
 
 # ──────────────────────────────────────────────
 # QSAR TOOLBOX HELPERS
 # ──────────────────────────────────────────────
 
+def _create_session_with_retries() -> requests.Session:
+    """Create a requests session with automatic retries."""
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "OPTIONS", "POST"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+
 def toolbox_get(endpoint: str, params: dict = None) -> Optional[dict]:
-    """Generic GET request to QSAR Toolbox REST API."""
+    """Generic GET request to QSAR Toolbox REST API with retry logic."""
     try:
         url = f"{TOOLBOX_URL}/api/v1/{endpoint}"
-        r = requests.get(url, params=params or {}, timeout=30)
+        session = _create_session_with_retries()
+        r = session.get(url, params=params or {}, timeout=30)
         r.raise_for_status()
         return r.json()
+    except requests.exceptions.Timeout:
+        log.warning(f"Toolbox GET {endpoint} timed out after 30s")
+        return None
+    except requests.exceptions.ConnectionError:
+        log.warning(f"Toolbox GET {endpoint} connection error — is QSAR Toolbox running on {TOOLBOX_URL}?")
+        return None
     except Exception as e:
         log.warning(f"Toolbox GET {endpoint} failed: {e}")
         return None
 
 
 def toolbox_post(endpoint: str, payload: dict) -> Optional[dict]:
-    """Generic POST request to QSAR Toolbox REST API."""
+    """Generic POST request to QSAR Toolbox REST API with retry logic."""
     try:
         url = f"{TOOLBOX_URL}/api/v1/{endpoint}"
-        r = requests.post(url, json=payload, timeout=60)
+        session = _create_session_with_retries()
+        r = session.post(url, json=payload, timeout=60)
         r.raise_for_status()
         return r.json()
+    except requests.exceptions.Timeout:
+        log.warning(f"Toolbox POST {endpoint} timed out after 60s")
+        return None
+    except requests.exceptions.ConnectionError:
+        log.warning(f"Toolbox POST {endpoint} connection error — is QSAR Toolbox running on {TOOLBOX_URL}?")
+        return None
     except Exception as e:
         log.warning(f"Toolbox POST {endpoint} failed: {e}")
         return None
@@ -376,6 +458,16 @@ def toolbox_search():
     return jsonify(data)
 
 
+@app.route("/api/toolbox/substances/<substance_id>")
+@require_key
+def toolbox_substance_details(substance_id):
+    """Get detailed information about a substance."""
+    data = toolbox_get(f"substances/{substance_id}")
+    if data is None:
+        return jsonify({"error": "Sustancia no encontrada"}), 404
+    return jsonify(data)
+
+
 @app.route("/api/toolbox/profile", methods=["POST"])
 @require_key
 def toolbox_profile():
@@ -385,14 +477,35 @@ def toolbox_profile():
     if not cas:
         return jsonify({"error": "CAS requerido"}), 400
 
+    profilers = body.get("profilers", ["mutagenicity", "aquatic_toxicity", "skin_sensitization"])
+
     data = toolbox_post("profiling/run", {
         "cas": cas,
-        "profilers": body.get("profilers", ["all"])
+        "profilers": profilers
     })
 
     if data is None:
         return jsonify({"error": "Toolbox no disponible"}), 503
 
+    return jsonify(data)
+
+
+@app.route("/api/toolbox/profilers")
+@require_key
+def toolbox_profilers():
+    """Get list of available profilers."""
+    data = toolbox_get("profiling/available")
+    if data is None:
+        return jsonify({
+            "profilers": [
+                "mutagenicity",
+                "aquatic_toxicity",
+                "skin_sensitization",
+                "biodegradation",
+                "ecotoxicity",
+                "reproductive_toxicity"
+            ]
+        }), 200
     return jsonify(data)
 
 
@@ -406,6 +519,51 @@ def toolbox_category():
         return jsonify({"error": "CAS requerido"}), 400
 
     data = toolbox_post("category/build", {"cas": cas})
+    if data is None:
+        return jsonify({"error": "Toolbox no disponible"}), 503
+
+    return jsonify(data)
+
+
+@app.route("/api/toolbox/datamatrix", methods=["POST"])
+@require_key
+def toolbox_datamatrix():
+    """Build data matrix for a category."""
+    body = request.get_json(force=True)
+    category_id = body.get("category_id")
+    endpoints = body.get("endpoints", [])
+
+    if not category_id:
+        return jsonify({"error": "category_id requerido"}), 400
+
+    data = toolbox_post("category/datamatrix", {
+        "category_id": category_id,
+        "endpoints": endpoints
+    })
+
+    if data is None:
+        return jsonify({"error": "Toolbox no disponible"}), 503
+
+    return jsonify(data)
+
+
+@app.route("/api/toolbox/readacross", methods=["POST"])
+@require_key
+def toolbox_readacross():
+    """Perform read-across prediction for a substance."""
+    body = request.get_json(force=True)
+    cas = body.get("cas")
+    endpoint = body.get("endpoint")
+
+    if not cas or not endpoint:
+        return jsonify({"error": "CAS y endpoint son requeridos"}), 400
+
+    data = toolbox_post("readacross/predict", {
+        "cas": cas,
+        "endpoint": endpoint,
+        "confidence": body.get("confidence", 0.7)
+    })
+
     if data is None:
         return jsonify({"error": "Toolbox no disponible"}), 503
 

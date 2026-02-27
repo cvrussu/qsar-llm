@@ -822,6 +822,23 @@
 
         .btn-primary:hover { opacity: 0.9; }
 
+        .btn-secondary {
+            padding: 12px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--glass-light);
+            color: var(--text-primary);
+        }
+
         /* ===== EXPORT BUTTON ===== */
         .btn-export {
             padding: 6px 14px;
@@ -1082,7 +1099,11 @@
                 <option value="pt">Português</option>
             </select>
         </div>
-        <button class="btn-primary" onclick="saveSettings()">💾 Guardar configuración</button>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+            <button class="btn-primary" style="flex:1;" onclick="saveSettings()">💾 Guardar</button>
+            <button class="btn-secondary" style="flex:1;" onclick="runToolboxDiagnostics()">🔍 Diagnosticar</button>
+        </div>
+        <div id="diagnosticsResult" style="margin-top:12px;padding:8px;border-radius:8px;background:rgba(37,99,235,0.1);display:none;max-height:200px;overflow-y:auto;font-size:12px;line-height:1.4;color:#94a3b8;"></div>
     </div>
 </div>
 
@@ -1135,14 +1156,20 @@ async function checkAPIStatus() {
         });
         if (resp.ok) {
             const data = await resp.json();
-            dot.className = 'status-dot';
-            text.textContent = `QSAR Toolbox ${data.version || 'v4.8'} · Online`;
+            const toolboxStatus = data.toolbox_connected ? '✓' : '✗';
+            const statusMsg = data.toolbox_connected
+                ? `QSAR Toolbox ${data.version || 'v4.8'} · Online`
+                : `Backend online · QSAR Toolbox offline (${data.toolbox_error || 'no disponible'})`;
+
+            dot.className = data.toolbox_connected ? 'status-dot' : 'status-dot disconnected';
+            text.textContent = statusMsg;
         } else {
             throw new Error('API error');
         }
-    } catch {
+    } catch (err) {
         dot.className = 'status-dot disconnected';
         text.textContent = 'API desconectada · Modo demo';
+        console.warn('API Status check failed:', err.message);
     }
 }
 
@@ -1170,6 +1197,76 @@ function saveSettings() {
 
     closeModal();
     checkAPIStatus();
+}
+
+async function runToolboxDiagnostics() {
+    const resultDiv = document.getElementById('diagnosticsResult');
+    const url = document.getElementById('apiUrl').value;
+
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '🔄 Ejecutando diagnósticos…';
+
+    const checks = [];
+
+    // Check 1: Backend connectivity
+    try {
+        const resp = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(5000) });
+        if (resp.ok) {
+            const data = await resp.json();
+            checks.push(`✓ Backend disponible en ${url}`);
+            checks.push(`  → Versión QSAR Toolbox: ${data.version || 'v4.8'}`);
+
+            if (data.toolbox_connected) {
+                checks.push(`✓ QSAR Toolbox WebAPI conectado`);
+            } else {
+                checks.push(`✗ QSAR Toolbox WebAPI NO disponible`);
+                if (data.toolbox_error) checks.push(`  → ${data.toolbox_error}`);
+            }
+        }
+    } catch (err) {
+        checks.push(`✗ Backend no disponible: ${err.message}`);
+    }
+
+    // Check 2: Health endpoint
+    try {
+        const resp = await fetch(`${url}/api/toolbox/health`, { signal: AbortSignal.timeout(5000) });
+        if (resp.ok) {
+            const data = await resp.json();
+            checks.push(`✓ Health check completado`);
+            checks.push(`  → Status: ${data.status}`);
+            if (data.checks.connectivity) checks.push(`  ✓ Conectividad OK`);
+            if (data.checks.profilers) checks.push(`  ✓ Profilers disponibles`);
+            if (data.checks.substances) checks.push(`  ✓ Search de sustancias OK`);
+            if (data.errors.length > 0) {
+                checks.push(`  Advertencias:`);
+                data.errors.forEach(e => checks.push(`    • ${e}`));
+            }
+        }
+    } catch (err) {
+        checks.push(`⚠ Health check no disponible`);
+    }
+
+    // Check 3: PubChem connectivity
+    try {
+        const resp = await fetch(`${url}/api/pubchem?q=water`, { signal: AbortSignal.timeout(5000) });
+        if (resp.ok) {
+            checks.push(`✓ PubChem lookup disponible`);
+        } else {
+            checks.push(`⚠ PubChem lookup retornó error`);
+        }
+    } catch (err) {
+        checks.push(`⚠ PubChem lookup falló`);
+    }
+
+    // Check 4: Gemini API
+    if (!document.getElementById('apiKey').value) {
+        checks.push(`⚠ No hay API Key de Gemini configurada`);
+    } else {
+        checks.push(`✓ API Key de Gemini detectada`);
+    }
+
+    resultDiv.innerHTML = `<strong>Resultados del diagnóstico:</strong><br><br>` +
+                         checks.map(c => c.startsWith(' ') ? `${c}<br>` : `${c}<br>`).join('');
 }
 
 document.getElementById('btnSettings').addEventListener('click', () => {
