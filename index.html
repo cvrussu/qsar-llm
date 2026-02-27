@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QSAR LLM – UranoIA | Evaluación Regulatoria de Agroquímicos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --brand-dark:    #0a1628;
+            --brand-navy:    #0d2045;
+            --brand-blue:    #1a3a6e;
+            --brand-accent:  #2563eb;
+            --brand-teal:    #0ea5e9;
+            --brand-green:   #10b981;
+            --brand-amber:   #f59e0b;
+            --brand-red:     #ef4444;
+            --text-primary:  #f0f4ff;
+            --text-secondary:#94a3b8;
+            --text-muted:    #64748b;
+            --border:        rgba(37,99,235,0.25);
+            --glass:         rgba(13,32,69,0.6);
+            --glass-light:   rgba(26,58,110,0.4);
+            --shadow:        0 8px 32px rgba(0,0,0,0.4);
+            --radius:        14px;
+            --radius-sm:     8px;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--brand-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* ===== ANIMATED BACKGROUND ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 20%, rgba(37,99,235,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(14,165,233,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 60% at 50% 50%, rgba(16,185,129,0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Molecular network animation */
+        .bg-molecules {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.03;
+            pointer-events: none;
+            background-image:
+                radial-gradient(circle 2px at 20% 30%, #2563eb 100%, transparent),
+                radial-gradient(circle 2px at 80% 20%, #0ea5e9 100%, transparent),
+                radial-gradient(circle 2px at 60% 70%, #10b981 100%, transparent),
+                radial-gradient(circle 2px at 40% 80%, #2563eb 100%, transparent),
+                radial-gradient(circle 2px at 90% 60%, #0ea5e9 100%, transparent);
+        }
+
+        /* ===== LAYOUT ===== */
+        .app {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            grid-template-rows: 64px 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* ===== TOPBAR ===== */
+        .topbar {
+            grid-column: 1 / -1;
+            background: rgba(10,22,40,0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            gap: 16px;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-container {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #1a3a6e, #2563eb);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(37,99,235,0.4);
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-container::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        .brand-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #f0f4ff, #93c5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.1;
+        }
+
+        .brand-text span {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .beta-badge {
+            background: linear-gradient(135deg, var(--brand-accent), var(--brand-teal));
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--brand-green);
+            box-shadow: 0 0 8px var(--brand-green);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected { background: var(--text-muted); box-shadow: none; animation: none; }
+        .status-dot.connecting { background: var(--brand-amber); box-shadow: 0 0 8px var(--brand-amber); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--glass);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .btn-icon:hover { background: var(--glass-light); color: var(--text-primary); border-color: var(--brand-accent); }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            background: rgba(10,22,40,0.8);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-section h3 {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        /* ===== SEARCH BOX ===== */
+        .search-box {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            transition: border-color 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .search-box:focus-within {
+            border-color: var(--brand-accent);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+        }
+
+        .search-box input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .search-icon {
+            color: var(--text-muted);
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .btn-search {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, var(--brand-accent), var(--brand-teal));
+            border: none;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-search:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 15px rgba(37,99,235,0.4); }
+        .btn-search:active { transform: translateY(0); }
+        .btn-search:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Quick CAS pills */
+        .quick-cas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .cas-pill {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .cas-pill:hover { border-color: var(--brand-teal); color: var(--brand-teal); background: rgba(14,165,233,0.08); }
+
+        /* ===== ANALYSIS OPTIONS ===== */
+        .option-group { display: flex; flex-direction: column; gap: 8px; }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .option-item input[type="checkbox"] {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 1.5px solid var(--border);
+            border-radius: 4px;
+            background: var(--glass);
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .option-item input[type="checkbox"]:checked {
+            background: var(--brand-accent);
+            border-color: var(--brand-accent);
+        }
+
+        .option-item input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            color: white;
+        }
+
+        .option-item label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* ===== HISTORY ===== */
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-track { background: transparent; }
+        .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .history-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.15s;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .history-item:hover { background: var(--glass); border-left-color: var(--brand-accent); }
+        .history-item.active { background: rgba(37,99,235,0.1); border-left-color: var(--brand-accent); }
+
+        .history-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+        .history-text { flex: 1; min-width: 0; }
+        .history-name { font-size: 12px; font-weight: 500; color: var(--text-primary); truncate: true; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .history-cas { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ===== MAIN CHAT AREA ===== */
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        /* ===== MESSAGES ===== */
+        .messages-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .messages-wrapper::-webkit-scrollbar { width: 6px; }
+        .messages-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .messages-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* ===== WELCOME SCREEN ===== */
+        .welcome {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .welcome-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-accent));
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 0 40px rgba(37,99,235,0.3), 0 0 80px rgba(37,99,235,0.1);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .welcome h2 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f0f4ff, #93c5fd, #6ee7b7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+
+        .welcome p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .capability-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .capability-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: left;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .capability-card:hover {
+            border-color: var(--brand-accent);
+            background: var(--glass-light);
+            transform: translateY(-2px);
+        }
+
+        .capability-card .icon { font-size: 22px; margin-bottom: 8px; }
+        .capability-card h4 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .capability-card p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+        /* ===== MESSAGE BUBBLES ===== */
+        .message { display: flex; gap: 12px; align-items: flex-start; }
+        .message.user { flex-direction: row-reverse; }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .avatar.bot {
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-accent));
+            box-shadow: 0 0 15px rgba(37,99,235,0.3);
+        }
+
+        .avatar.user {
+            background: linear-gradient(135deg, var(--brand-navy), var(--brand-blue));
+            border: 1px solid var(--border);
+        }
+
+        .bubble {
+            max-width: 75%;
+            padding: 14px 18px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .bubble.bot {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .bubble.user {
+            background: linear-gradient(135deg, var(--brand-accent), #3b82f6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(37,99,235,0.3);
+        }
+
+        .bubble-time {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message.user .bubble-time { text-align: left; }
+
+        /* ===== RESULT CARDS ===== */
+        .result-card {
+            background: rgba(10,22,40,0.7);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .result-card-header {
+            padding: 12px 16px;
+            background: var(--glass-light);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .result-card-header h4 {
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-card-body { padding: 16px; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .info-item {
+            background: var(--glass);
+            border: 1px solid rgba(37,99,235,0.15);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+        }
+
+        .info-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .info-value.highlight { color: var(--brand-teal); }
+        .info-value.warning { color: var(--brand-amber); }
+        .info-value.danger { color: var(--brand-red); }
+        .info-value.safe { color: var(--brand-green); }
+
+        /* Endpoint bars */
+        .endpoint-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .endpoint-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .endpoint-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+            width: 180px;
+            flex-shrink: 0;
+        }
+
+        .endpoint-bar-wrap {
+            flex: 1;
+            background: rgba(37,99,235,0.1);
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .endpoint-bar {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--brand-accent), var(--brand-teal));
+            transition: width 1s ease;
+        }
+
+        .endpoint-value {
+            font-size: 11px;
+            color: var(--text-muted);
+            width: 80px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        /* Alert badges */
+        .alert-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+        .alert-tag {
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .alert-tag.red { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+        .alert-tag.amber { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+        .alert-tag.green { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+        .alert-tag.blue { background: rgba(37,99,235,0.15); color: #60a5fa; border: 1px solid rgba(37,99,235,0.3); }
+
+        /* ===== LOADING ANIMATION ===== */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 14px 18px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--brand-teal);
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        /* ===== INPUT BAR ===== */
+        .input-area {
+            padding: 16px 24px 20px;
+            background: rgba(10,22,40,0.8);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-box {
+            flex: 1;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-box:focus-within {
+            border-color: var(--brand-accent);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+        }
+
+        .input-box textarea {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            min-height: 22px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .input-box textarea::placeholder { color: var(--text-muted); }
+
+        .input-actions { display: flex; gap: 8px; align-items: center; }
+
+        .btn-send {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--brand-accent), var(--brand-teal));
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(37,99,235,0.3);
+        }
+
+        .btn-send:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
+        .btn-send:active { transform: translateY(0); }
+        .btn-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .input-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* ===== SETTINGS MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+        .modal {
+            background: var(--brand-navy);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px;
+            width: 480px;
+            max-width: 90vw;
+            box-shadow: var(--shadow);
+            transform: scale(0.95);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.open .modal { transform: scale(1); }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h2 { font-size: 18px; font-weight: 700; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .form-input {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus { border-color: var(--brand-accent); }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--brand-accent), var(--brand-teal));
+            border: none;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+
+        /* ===== EXPORT BUTTON ===== */
+        .btn-export {
+            padding: 6px 14px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-export:hover { border-color: var(--brand-green); color: var(--brand-green); }
+
+        /* ===== SECTION DIVIDER ===== */
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+
+        .section-label::before, .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ===== DISCLAIMER ===== */
+        .disclaimer-bar {
+            background: rgba(245,158,11,0.08);
+            border-top: 1px solid rgba(245,158,11,0.2);
+            padding: 6px 24px;
+            font-size: 11px;
+            color: var(--brand-amber);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        /* ===== TOOLTIP ===== */
+        [data-tooltip] { position: relative; }
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--brand-dark);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 6px 10px;
+            font-size: 11px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            z-index: 50;
+        }
+
+        /* ===== SCROLLBAR GLOBAL ===== */
+        * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .app { grid-template-columns: 1fr; grid-template-rows: 64px auto 1fr; }
+            .sidebar { display: none; }
+            .bubble { max-width: 90%; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <div class="topbar-brand">
+            <div class="logo-container">🧬</div>
+            <div class="brand-text">
+                <h1>QSAR LLM <span class="beta-badge">BETA</span></h1>
+                <span>UranoIA · Evaluación Regulatoria de Agroquímicos</span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Conectando API...</span>
+            </div>
+            <button class="btn-icon" id="btnSettings" data-tooltip="Configuración" title="Configuración">⚙️</button>
+            <button class="btn-icon" id="btnNew" data-tooltip="Nueva consulta" title="Nueva consulta">✨</button>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <!-- Search -->
+        <div class="sidebar-section">
+            <h3>Búsqueda rápida</h3>
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="sidebarSearch" placeholder="CAS, nombre o SMILES…" />
+            </div>
+            <button class="btn-search" id="btnSidebarSearch">Analizar molécula</button>
+        </div>
+
+        <!-- Quick CAS Examples -->
+        <div class="sidebar-section">
+            <h3>Agroquímicos frecuentes</h3>
+            <div class="quick-cas">
+                <span class="cas-pill" data-cas="1071-83-6" data-name="Glifosato">Glifosato</span>
+                <span class="cas-pill" data-cas="111991-09-4" data-name="Imidacloprid">Imidacloprid</span>
+                <span class="cas-pill" data-cas="94-75-7" data-name="2,4-D">2,4-D</span>
+                <span class="cas-pill" data-cas="79983-71-4" data-name="Tebuconazol">Tebuconazol</span>
+                <span class="cas-pill" data-cas="34123-59-6" data-name="Isoproturón">Isoproturón</span>
+                <span class="cas-pill" data-cas="52315-07-8" data-name="Cipermetrina">Cipermetrina</span>
+                <span class="cas-pill" data-cas="330-55-2" data-name="Linurón">Linurón</span>
+                <span class="cas-pill" data-cas="57-74-9" data-name="Clordano">Clordano</span>
+            </div>
+        </div>
+
+        <!-- Analysis Options -->
+        <div class="sidebar-section">
+            <h3>Módulos de análisis</h3>
+            <div class="option-group">
+                <label class="option-item">
+                    <input type="checkbox" id="optProfiling" checked>
+                    <label for="optProfiling">🔬 Perfilado estructural</label>
+                </label>
+                <label class="option-item">
+                    <input type="checkbox" id="optReadAcross" checked>
+                    <label for="optReadAcross">🔗 Read-Across / Categoría</label>
+                </label>
+                <label class="option-item">
+                    <input type="checkbox" id="optAquatic" checked>
+                    <label for="optAquatic">🐟 Toxicidad acuática</label>
+                </label>
+                <label class="option-item">
+                    <input type="checkbox" id="optMutagen" checked>
+                    <label for="optMutagen">🧬 Genotoxicidad / Ames</label>
+                </label>
+                <label class="option-item">
+                    <input type="checkbox" id="optSkin">
+                    <label for="optSkin">🤚 Sensibilización cutánea</label>
+                </label>
+                <label class="option-item">
+                    <input type="checkbox" id="optMetab">
+                    <label for="optMetab">⚗️ Metabolismo / Transformación</label>
+                </label>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="sidebar-section" style="flex:0; padding-bottom:8px;">
+            <h3>Historial</h3>
+        </div>
+        <div class="history-list" id="historyList">
+            <!-- Populated dynamically -->
+        </div>
+    </aside>
+
+    <!-- MAIN AREA -->
+    <main class="main">
+        <div class="messages-wrapper" id="messagesWrapper">
+            <!-- Welcome screen -->
+            <div class="welcome" id="welcomeScreen">
+                <div class="welcome-logo">🧪</div>
+                <h2>QSAR LLM</h2>
+                <p>Agente de inteligencia artificial especializado en evaluación regulatoria de agroquímicos mediante el OECD QSAR Toolbox. Ingresa un número CAS, nombre de producto o SMILES para comenzar.</p>
+                <div class="capability-grid">
+                    <div class="capability-card" onclick="quickPrompt('Analiza el perfil toxicológico completo del glifosato CAS 1071-83-6')">
+                        <div class="icon">🔬</div>
+                        <h4>Perfilado toxicológico</h4>
+                        <p>Alertas estructurales y clasificación de peligros regulatorios</p>
+                    </div>
+                    <div class="capability-card" onclick="quickPrompt('¿Qué datos de toxicidad acuática existen para imidacloprid 111991-09-4?')">
+                        <div class="icon">🐟</div>
+                        <h4>Toxicidad acuática</h4>
+                        <p>CL50, NOEC y clasificación para peces, Daphnia y algas</p>
+                    </div>
+                    <div class="capability-card" onclick="quickPrompt('Realiza un análisis de mutagenicidad y genotoxicidad para 2,4-D CAS 94-75-7')">
+                        <div class="icon">🧬</div>
+                        <h4>Genotoxicidad / Ames</h4>
+                        <p>Predicción in silico de mutagenicidad con read-across</p>
+                    </div>
+                    <div class="capability-card" onclick="quickPrompt('¿Cómo usar el QSAR Toolbox para registrar un plaguicida bajo REACH?')">
+                        <div class="icon">📋</div>
+                        <h4>Guía regulatoria</h4>
+                        <p>REACH, Reg. 1107/2009 UE, ANVISA y marcos OCDE</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer bar -->
+        <div class="disclaimer-bar">
+            ⚠️ Solo para uso regulatorio profesional. Las predicciones in silico no reemplazan ensayos experimentales certificados.
+        </div>
+
+        <!-- Input area -->
+        <div class="input-area">
+            <div class="input-row">
+                <div class="input-box">
+                    <textarea id="chatInput"
+                        placeholder="Ingresa un CAS (ej: 1071-83-6), nombre de molécula o pregunta sobre el QSAR Toolbox…"
+                        rows="1"
+                        onInput="autoResize(this)"
+                        onKeyDown="handleKeyDown(event)"></textarea>
+                    <div class="input-actions">
+                        <button class="btn-icon" id="btnClear" title="Limpiar" style="width:30px;height:30px;font-size:13px;" onclick="clearInput()">✕</button>
+                    </div>
+                </div>
+                <button class="btn-send" id="btnSend" onclick="sendMessage()" title="Enviar (Enter)">
+                    ➤
+                </button>
+            </div>
+            <div class="input-hint">Enter para enviar · Shift+Enter nueva línea · Powered by UranoIA + OECD QSAR Toolbox v4.8</div>
+        </div>
+    </main>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>⚙️ Configuración API</h2>
+            <button class="btn-icon" onclick="closeModal()" style="font-size:14px;">✕</button>
+        </div>
+        <div class="form-group">
+            <label>URL del servidor QSAR Toolbox</label>
+            <input type="text" class="form-input" id="apiUrl" placeholder="http://localhost:5000" value="http://localhost:5000">
+        </div>
+        <div class="form-group">
+            <label>API Key (opcional)</label>
+            <input type="password" class="form-input" id="apiKey" placeholder="sk-…">
+        </div>
+        <div class="form-group">
+            <label>Modelo LLM</label>
+            <select class="form-input" id="llmModel">
+                <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Recomendado)</option>
+                <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Idioma de respuesta</label>
+            <select class="form-input" id="respLang">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+                <option value="pt">Português</option>
+            </select>
+        </div>
+        <button class="btn-primary" onclick="saveSettings()">💾 Guardar configuración</button>
+    </div>
+</div>
+
+<script>
+// ===== STATE =====
+const state = {
+    messages: [],
+    history: [],
+    settings: {
+        apiUrl: localStorage.getItem('qsar_api_url') || 'http://localhost:5000',
+        apiKey: localStorage.getItem('qsar_api_key') || '',
+        llmModel: localStorage.getItem('qsar_model') || 'claude-sonnet-4-6',
+        respLang: localStorage.getItem('qsar_lang') || 'es',
+    },
+    isLoading: false,
+    currentMolecule: null,
+};
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+    loadHistory();
+    checkAPIStatus();
+
+    // Sidebar search enter key
+    document.getElementById('sidebarSearch').addEventListener('keydown', e => {
+        if (e.key === 'Enter') sidebarSearch();
+    });
+
+    // CAS pills
+    document.querySelectorAll('.cas-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            const name = pill.dataset.name;
+            const cas = pill.dataset.cas;
+            quickPrompt(`Analiza el perfil toxicológico completo de ${name} (CAS ${cas})`);
+        });
+    });
+});
+
+// ===== API STATUS CHECK =====
+async function checkAPIStatus() {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    dot.className = 'status-dot connecting';
+    text.textContent = 'Conectando…';
+
+    try {
+        const resp = await fetch(`${state.settings.apiUrl}/api/status`, {
+            signal: AbortSignal.timeout(5000)
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            dot.className = 'status-dot';
+            text.textContent = `QSAR Toolbox ${data.version || 'v4.8'} · Online`;
+        } else {
+            throw new Error('API error');
+        }
+    } catch {
+        dot.className = 'status-dot disconnected';
+        text.textContent = 'API desconectada · Modo demo';
+    }
+}
+
+// ===== SETTINGS =====
+function loadSettings() {
+    document.getElementById('apiUrl').value = state.settings.apiUrl;
+    document.getElementById('apiKey').value = state.settings.apiKey;
+    document.getElementById('llmModel').value = state.settings.llmModel;
+    document.getElementById('respLang').value = state.settings.respLang;
+}
+
+function saveSettings() {
+    state.settings.apiUrl = document.getElementById('apiUrl').value;
+    state.settings.apiKey = document.getElementById('apiKey').value;
+    state.settings.llmModel = document.getElementById('llmModel').value;
+    state.settings.respLang = document.getElementById('respLang').value;
+
+    localStorage.setItem('qsar_api_url', state.settings.apiUrl);
+    localStorage.setItem('qsar_api_key', state.settings.apiKey);
+    localStorage.setItem('qsar_model', state.settings.llmModel);
+    localStorage.setItem('qsar_lang', state.settings.respLang);
+
+    closeModal();
+    checkAPIStatus();
+}
+
+document.getElementById('btnSettings').addEventListener('click', () => {
+    document.getElementById('settingsModal').classList.add('open');
+});
+
+function closeModal() {
+    document.getElementById('settingsModal').classList.remove('open');
+}
+
+document.getElementById('settingsModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+});
+
+// ===== INPUT HELPERS =====
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+}
+
+function clearInput() {
+    const inp = document.getElementById('chatInput');
+    inp.value = '';
+    inp.style.height = 'auto';
+}
+
+function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+}
+
+// ===== NEW CHAT =====
+document.getElementById('btnNew').addEventListener('click', () => {
+    state.messages = [];
+    state.currentMolecule = null;
+    const wrapper = document.getElementById('messagesWrapper');
+    wrapper.innerHTML = '';
+    wrapper.appendChild(createWelcomeScreen());
+});
+
+function createWelcomeScreen() {
+    const div = document.createElement('div');
+    div.id = 'welcomeScreen';
+    div.className = 'welcome';
+    div.innerHTML = document.getElementById('welcomeScreen')?.innerHTML || '';
+    return div;
+}
+
+// ===== HISTORY =====
+function loadHistory() {
+    const saved = localStorage.getItem('qsar_history');
+    if (saved) {
+        state.history = JSON.parse(saved);
+        renderHistory();
+    }
+}
+
+function saveHistoryItem(name, cas, query) {
+    const item = { id: Date.now(), name, cas, query, ts: new Date().toISOString() };
+    state.history.unshift(item);
+    if (state.history.length > 20) state.history.pop();
+    localStorage.setItem('qsar_history', JSON.stringify(state.history));
+    renderHistory();
+}
+
+function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (state.history.length === 0) {
+        list.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center;">Sin consultas recientes</div>';
+        return;
+    }
+    list.innerHTML = state.history.map(item => `
+        <div class="history-item" onclick="loadHistoryItem(${item.id})">
+            <span class="history-icon">🧪</span>
+            <div class="history-text">
+                <div class="history-name">${item.name}</div>
+                <div class="history-cas">${item.cas} · ${new Date(item.ts).toLocaleDateString('es-CL')}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function loadHistoryItem(id) {
+    const item = state.history.find(h => h.id === id);
+    if (item) {
+        document.getElementById('chatInput').value = item.query;
+        autoResize(document.getElementById('chatInput'));
+    }
+}
+
+// ===== QUICK PROMPT =====
+function quickPrompt(text) {
+    document.getElementById('chatInput').value = text;
+    autoResize(document.getElementById('chatInput'));
+    sendMessage();
+}
+
+function sidebarSearch() {
+    const val = document.getElementById('sidebarSearch').value.trim();
+    if (!val) return;
+    quickPrompt(`Analiza el perfil toxicológico completo de ${val}`);
+}
+
+document.getElementById('btnSidebarSearch').addEventListener('click', sidebarSearch);
+
+// ===== SEND MESSAGE =====
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text || state.isLoading) return;
+
+    // Hide welcome screen
+    const welcome = document.getElementById('welcomeScreen');
+    if (welcome) welcome.remove();
+
+    // Add user message
+    appendMessage('user', text);
+    clearInput();
+
+    // Extract CAS or molecule name for history
+    const casMatch = text.match(/\b(\d{2,7}-\d{2}-\d)\b/);
+    const cas = casMatch ? casMatch[1] : 'N/A';
+    const nameMatch = text.match(/(?:de |of |para )([A-Za-záéíóúüñÁÉÍÓÚÜÑ\s\-]+?)(?:\s*\(|CAS|\d|$)/i);
+    const molName = nameMatch ? nameMatch[1].trim() : text.slice(0, 25) + (text.length > 25 ? '…' : '');
+    saveHistoryItem(molName, cas, text);
+
+    // Show loading
+    const loadingId = showLoading();
+    state.isLoading = true;
+    document.getElementById('btnSend').disabled = true;
+
+    try {
+        const response = await callAPI(text);
+        removeLoading(loadingId);
+        appendMessage('bot', response.message, response.data);
+    } catch (err) {
+        removeLoading(loadingId);
+        appendMessage('bot', getDemoResponse(text));
+    } finally {
+        state.isLoading = false;
+        document.getElementById('btnSend').disabled = false;
+    }
+}
+
+// ===== API CALL =====
+async function callAPI(query) {
+    const options = {
+        profiling: document.getElementById('optProfiling').checked,
+        readAcross: document.getElementById('optReadAcross').checked,
+        aquatic: document.getElementById('optAquatic').checked,
+        mutagen: document.getElementById('optMutagen').checked,
+        skin: document.getElementById('optSkin').checked,
+        metab: document.getElementById('optMetab').checked,
+    };
+
+    const resp = await fetch(`${state.settings.apiUrl}/api/chat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(state.settings.apiKey && { 'Authorization': `Bearer ${state.settings.apiKey}` })
+        },
+        body: JSON.stringify({
+            query,
+            options,
+            model: state.settings.llmModel,
+            language: state.settings.respLang,
+        }),
+        signal: AbortSignal.timeout(60000)
+    });
+
+    if (!resp.ok) throw new Error('API error');
+    return await resp.json();
+}
+
+// ===== DEMO RESPONSE (when API offline) =====
+function getDemoResponse(query) {
+    const casMatch = query.match(/\b(\d{2,7}-\d{2}-\d)\b/);
+    const cas = casMatch ? casMatch[1] : null;
+
+    const molecules = {
+        '1071-83-6': { name: 'Glifosato', formula: 'C₃H₈NO₅P', mw: '169.07 g/mol', logKow: '-3.40', class: 'Herbicida organofosfonado' },
+        '111991-09-4': { name: 'Imidacloprid', formula: 'C₉H₁₀ClN₅O₂', mw: '255.66 g/mol', logKow: '0.57', class: 'Insecticida neonicotinoide' },
+        '94-75-7': { name: '2,4-D', formula: 'C₈H₆Cl₂O₃', mw: '221.04 g/mol', logKow: '2.81', class: 'Herbicida auxínico' },
+    };
+
+    const mol = cas ? molecules[cas] : null;
+
+    if (mol) {
+        return `**Análisis QSAR para ${mol.name} (CAS: ${cas})**\n\n**Clase:** ${mol.class}\n**Fórmula molecular:** ${mol.formula}\n**Peso molecular:** ${mol.mw}\n**log Kow:** ${mol.logKow}\n\n---\n\n**Modo Demo** — El servidor backend no está disponible en este momento.\n\nPara análisis completo con el QSAR Toolbox v4.8, configure la URL del servidor en ⚙️ Configuración e inicie el backend Python incluido.\n\n**Módulos disponibles en modo conectado:**\n• 🔬 Perfilado estructural (73 esquemas)\n• 🧬 Alertas de mutagenicidad (Ames test)\n• 🐟 Toxicidad acuática (EC50, LC50, NOEC)\n• 🔗 Read-across y categorías químicas\n• 📋 Exportación a IUCLID6 (REACH)\n• ⚗️ Rutas metabólicas`;
+    }
+
+    if (query.toLowerCase().includes('qsar') || query.toLowerCase().includes('toolbox')) {
+        return `El **OECD QSAR Toolbox v4.8** es una plataforma gratuita co-desarrollada por OCDE y ECHA para evaluación de peligros de sustancias químicas sin ensayos en animales.\n\n**Módulos principales:**\n\n1. **INPUT** — Ingreso por CAS, nombre, SMILES o estructura dibujada\n2. **PROFILING** — 73 esquemas de perfilado estructural\n3. **CATEGORY** — Construcción de categorías y análogos\n4. **DATA MATRIX** — Organización de datos experimentales\n5. **GAP FILLING** — Read-across, trend analysis y modelos QSAR\n\n**Uso regulatorio:** Válido para REACH (UE), Reg. 1107/2009, ANVISA (Brasil), EPA (EEUU) y marcos OCDE.\n\nIngresa un número CAS o nombre de agroquímico para iniciar un análisis.`;
+    }
+
+    return `Soy **QSAR LLM**, el asistente especializado en evaluación regulatoria de agroquímicos mediante el OECD QSAR Toolbox.\n\n**Puedo ayudarte con:**\n• Análisis de perfiles toxicológicos por CAS o nombre\n• Predicciones de toxicidad acuática y terrestre\n• Evaluación de mutagenicidad (Ames test)\n• Read-across y categorías químicas\n• Guía de flujos de trabajo QSAR Toolbox\n• Contexto regulatorio (REACH, Reg. 1107/2009, OCDE)\n\nIngresa un número CAS (ej: **1071-83-6**) o nombre de molécula para comenzar el análisis.\n\n*⚠️ Modo demo activo — configura el servidor backend para análisis completos con datos reales del QSAR Toolbox.*`;
+}
+
+// ===== APPEND MESSAGE =====
+function appendMessage(role, text, data = null) {
+    const wrapper = document.getElementById('messagesWrapper');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${role}`;
+    avatar.textContent = role === 'bot' ? '🧬' : '👤';
+
+    const contentWrap = document.createElement('div');
+    contentWrap.style.maxWidth = '75%';
+    contentWrap.style.display = 'flex';
+    contentWrap.style.flexDirection = 'column';
+    contentWrap.style.gap = '4px';
+    if (role === 'user') contentWrap.style.alignItems = 'flex-end';
+
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${role}`;
+    bubble.innerHTML = formatMessage(text);
+
+    // Add result card if data present
+    if (data && role === 'bot') {
+        const card = buildResultCard(data);
+        if (card) bubble.appendChild(card);
+    }
+
+    const time = document.createElement('div');
+    time.className = 'bubble-time';
+    time.textContent = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
+    contentWrap.appendChild(bubble);
+    contentWrap.appendChild(time);
+
+    if (role === 'user') {
+        msgDiv.appendChild(contentWrap);
+        msgDiv.appendChild(avatar);
+    } else {
+        msgDiv.appendChild(avatar);
+        msgDiv.appendChild(contentWrap);
+    }
+
+    wrapper.appendChild(msgDiv);
+    wrapper.scrollTop = wrapper.scrollHeight;
+    state.messages.push({ role, text, ts: Date.now() });
+}
+
+// ===== FORMAT MESSAGE =====
+function formatMessage(text) {
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code style="background:rgba(37,99,235,0.15);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>')
+        .replace(/^#{1,3} (.+)$/gm, '<div style="font-weight:700;font-size:15px;margin:10px 0 6px;color:var(--brand-teal)">$1</div>')
+        .replace(/^• (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0"><span style="color:var(--brand-teal)">•</span><span>$1</span></div>')
+        .replace(/^\d+\. (.+)$/gm, (m, p1, offset, str) => `<div style="display:flex;gap:8px;margin:3px 0"><span style="color:var(--brand-accent);font-weight:600">${(str.slice(0,offset).match(/^\d+\./gm)||[]).length+1}.</span><span>${p1}</span></div>`)
+        .replace(/\n---\n/g, '<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">')
+        .replace(/\n/g, '<br>');
+}
+
+// ===== BUILD RESULT CARD =====
+function buildResultCard(data) {
+    if (!data || !data.molecule) return null;
+
+    const card = document.createElement('div');
+    card.className = 'result-card';
+
+    const header = document.createElement('div');
+    header.className = 'result-card-header';
+    header.innerHTML = `
+        <h4>📊 Datos del QSAR Toolbox — ${data.molecule.name || 'Molécula'}</h4>
+        <button class="btn-export" onclick="exportData()" title="Exportar datos">📤 Exportar</button>
+    `;
+    card.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'result-card-body';
+
+    // Info grid
+    if (data.molecule) {
+        const grid = document.createElement('div');
+        grid.className = 'info-grid';
+        const fields = [
+            { label: 'Número CAS', value: data.molecule.cas, cls: 'highlight' },
+            { label: 'Fórmula', value: data.molecule.formula, cls: '' },
+            { label: 'Peso Molecular', value: data.molecule.mw, cls: '' },
+            { label: 'log Kow', value: data.molecule.logKow, cls: data.molecule.logKow > 4 ? 'warning' : '' },
+        ];
+        fields.forEach(f => {
+            if (f.value) {
+                grid.innerHTML += `<div class="info-item"><div class="info-label">${f.label}</div><div class="info-value ${f.cls}">${f.value}</div></div>`;
+            }
+        });
+        body.appendChild(grid);
+    }
+
+    // Endpoints
+    if (data.endpoints && data.endpoints.length > 0) {
+        const label = document.createElement('div');
+        label.className = 'section-label';
+        label.textContent = 'Endpoints toxicológicos';
+        body.appendChild(label);
+
+        const endList = document.createElement('div');
+        endList.className = 'endpoint-list';
+        data.endpoints.forEach(ep => {
+            endList.innerHTML += `
+                <div class="endpoint-row">
+                    <span class="endpoint-name">${ep.name}</span>
+                    <div class="endpoint-bar-wrap">
+                        <div class="endpoint-bar" style="width:${ep.score}%"></div>
+                    </div>
+                    <span class="endpoint-value">${ep.value}</span>
+                </div>
+            `;
+        });
+        body.appendChild(endList);
+    }
+
+    // Alerts
+    if (data.alerts && data.alerts.length > 0) {
+        const label = document.createElement('div');
+        label.className = 'section-label';
+        label.style.marginTop = '12px';
+        label.textContent = 'Alertas estructurales';
+        body.appendChild(label);
+
+        const tags = document.createElement('div');
+        tags.className = 'alert-tags';
+        data.alerts.forEach(a => {
+            tags.innerHTML += `<span class="alert-tag ${a.level}">${a.text}</span>`;
+        });
+        body.appendChild(tags);
+    }
+
+    card.appendChild(body);
+    return card;
+}
+
+// ===== LOADING =====
+function showLoading() {
+    const wrapper = document.getElementById('messagesWrapper');
+    const id = 'loading-' + Date.now();
+
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    div.id = id;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar bot';
+    avatar.textContent = '🧬';
+
+    const indicator = document.createElement('div');
+    indicator.className = 'typing-indicator';
+    indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+
+    div.appendChild(avatar);
+    div.appendChild(indicator);
+    wrapper.appendChild(div);
+    wrapper.scrollTop = wrapper.scrollHeight;
+    return id;
+}
+
+function removeLoading(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+}
+
+// ===== EXPORT =====
+function exportData() {
+    const text = state.messages
+        .map(m => `[${m.role.toUpperCase()}] ${m.text}`)
+        .join('\n\n');
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `QSAR_LLM_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>
