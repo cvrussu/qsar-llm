@@ -281,7 +281,7 @@ def chat():
         body = request.get_json(force=True)
         query = body.get("query", "").strip()
         options = body.get("options", {})
-        model = body.get("model", "claude-3-5-sonnet-20241022")
+        model = body.get("model", "claude-3-haiku-20240307")
         language = body.get("language", "es")
 
         if not query:
