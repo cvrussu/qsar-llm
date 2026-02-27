@@ -1058,19 +1058,20 @@
             <button class="btn-icon" onclick="closeModal()" style="font-size:14px;">✕</button>
         </div>
         <div class="form-group">
-            <label>URL del servidor QSAR Toolbox</label>
-            <input type="text" class="form-input" id="apiUrl" placeholder="https://tu-app.railway.app">
+            <label>URL del servidor QSAR LLM</label>
+            <input type="text" class="form-input" id="apiUrl" placeholder="http://localhost:8000" value="http://localhost:8000">
         </div>
         <div class="form-group">
-            <label>API Key (opcional)</label>
-            <input type="password" class="form-input" id="apiKey" placeholder="sk-…">
+            <label>API Key de Google Gemini</label>
+            <input type="password" class="form-input" id="apiKey" placeholder="AIza…">
         </div>
         <div class="form-group">
-            <label>Modelo LLM</label>
+            <label>Modelo Gemini</label>
             <select class="form-input" id="llmModel">
-                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Recomendado)</option>
-                <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-                <option value="claude-3-haiku-20240307">Claude 3 Haiku (Rápido)</option>
+                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Recomendado)</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
+                <option value="gemini-pro">Gemini Pro (Rápido)</option>
             </select>
         </div>
         <div class="form-group">
@@ -1093,7 +1094,7 @@ const state = {
     settings: {
         apiUrl: localStorage.getItem('qsar_api_url') || window.location.origin,
         apiKey: localStorage.getItem('qsar_api_key') || '',
-        llmModel: localStorage.getItem('qsar_model') || 'claude-3-5-sonnet-20241022',
+        llmModel: localStorage.getItem('qsar_model') || 'gemini-2.0-flash-exp',
         respLang: localStorage.getItem('qsar_lang') || 'es',
     },
     isLoading: false,
@@ -1147,10 +1148,13 @@ async function checkAPIStatus() {
 
 // ===== SETTINGS =====
 function loadSettings() {
-    document.getElementById('apiUrl').value = state.settings.apiUrl;
+    const defaultUrl = window.location.origin === 'http://localhost:5173' || window.location.origin === 'http://localhost:8000'
+        ? window.location.origin
+        : 'http://localhost:8000';
+    document.getElementById('apiUrl').value = state.settings.apiUrl || defaultUrl;
     document.getElementById('apiKey').value = state.settings.apiKey;
-    document.getElementById('llmModel').value = state.settings.llmModel;
-    document.getElementById('respLang').value = state.settings.respLang;
+    document.getElementById('llmModel').value = state.settings.llmModel || 'gemini-2.0-flash-exp';
+    document.getElementById('respLang').value = state.settings.respLang || 'es';
 }
 
 function saveSettings() {
