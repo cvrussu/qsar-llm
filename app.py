@@ -15,6 +15,7 @@ from functools import wraps
 from typing import Optional
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import google.generativeai as genai
 import anthropic
 
 # ──────────────────────────────────────────────
@@ -32,8 +33,10 @@ CORS(app, origins=["*"])  # Adjust for production
 # QSAR Toolbox REST API base URL (local installation)
 TOOLBOX_URL = os.environ.get("TOOLBOX_URL", "http://localhost:3000")
 
-# Anthropic API key
-ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+# Google Gemini API key
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
 
 # ──────────────────────────────────────────────
 # AUTH MIDDLEWARE (disabled for beta)
@@ -74,7 +77,7 @@ def status():
         "status": "online",
         "version": toolbox_version,
         "toolbox_connected": toolbox_ok,
-        "anthropic_configured": bool(ANTHROPIC_KEY),
+        "gemini_configured": bool(GEMINI_KEY),
         "timestamp": datetime.utcnow().isoformat(),
     })
 
@@ -276,12 +279,11 @@ def build_llm_prompt(query: str, toolbox_results: dict, language: str) -> str:
 @app.route("/api/chat", methods=["POST"])
 @require_key
 def chat():
-    """Main chat endpoint: orchestrates Toolbox + Claude."""
+    """Main chat endpoint: orchestrates Toolbox + Gemini."""
     try:
         body = request.get_json(force=True)
         query = body.get("query", "").strip()
         options = body.get("options", {})
-        model = body.get("model", "claude-3-haiku-20240307")
         language = body.get("language", "es")
 
         if not query:
@@ -295,19 +297,16 @@ def chat():
         # Step 2: Build prompt
         user_prompt = build_llm_prompt(query, toolbox_results, language)
 
-        # Step 3: Call Claude
-        if not ANTHROPIC_KEY:
-            return jsonify({"error": "ANTHROPIC_API_KEY no configurado"}), 503
+        # Step 3: Call Gemini
+        if not GEMINI_KEY:
+            return jsonify({"error": "GEMINI_API_KEY no configurado"}), 503
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
-        message = client.messages.create(
-            model=model,
-            max_tokens=2048,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_prompt}]
+        gemini_model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=SYSTEM_PROMPT
         )
-
-        response_text = message.content[0].text
+        response = gemini_model.generate_content(user_prompt)
+        response_text = response.text
 
         # Step 4: Build structured card data (if molecule found)
         card_data = None
@@ -434,7 +433,7 @@ if __name__ == "__main__":
     log.info("  QSAR LLM — UranoIA Backend")
     log.info(f"  Puerto: {port}")
     log.info(f"  QSAR Toolbox URL: {TOOLBOX_URL}")
-    log.info(f"  Anthropic API: {'✓ Configurado' if ANTHROPIC_KEY else '✗ Falta ANTHROPIC_API_KEY'}")
+    log.info(f"  Gemini API: {'✓ Configurado' if GEMINI_KEY else '✗ Falta GEMINI_API_KEY'}")
     log.info("=" * 60)
 
     app.run(host="0.0.0.0", port=port, debug=debug)
