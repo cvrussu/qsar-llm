@@ -36,17 +36,12 @@ TOOLBOX_URL = os.environ.get("TOOLBOX_URL", "http://localhost:3000")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ──────────────────────────────────────────────
-# AUTH MIDDLEWARE (optional)
+# AUTH MIDDLEWARE (disabled for beta)
 # ──────────────────────────────────────────────
 def require_key(f):
-    """Optional API key check — skip if no key configured server-side."""
+    """Auth desactivada en beta — acceso abierto."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        expected_key = os.environ.get("BACKEND_API_KEY", "")
-        if expected_key:
-            provided = request.headers.get("Authorization", "").replace("Bearer ", "")
-            if provided != expected_key:
-                return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated
 
