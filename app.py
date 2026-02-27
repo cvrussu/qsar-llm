@@ -300,10 +300,17 @@ def chat():
         if not GEMINI_KEY:
             return jsonify({"error": "GEMINI_API_KEY no configurado"}), 503
 
-        gemini_model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=SYSTEM_PROMPT
-        )
+        try:
+            gemini_model = genai.GenerativeModel(
+                model_name="gemini-1.0-pro",
+                system_instruction=SYSTEM_PROMPT
+            )
+        except Exception:
+            # Fallback to gemini-pro
+            gemini_model = genai.GenerativeModel(
+                model_name="gemini-pro",
+                system_instruction=SYSTEM_PROMPT
+            )
         response = gemini_model.generate_content(user_prompt)
         response_text = response.text
 
@@ -346,12 +353,9 @@ def chat():
             "timestamp": datetime.utcnow().isoformat(),
         })
 
-    except anthropic.APIError as e:
-        log.error(f"Anthropic API error: {e}")
-        return jsonify({"error": f"Error de API: {str(e)}"}), 502
     except Exception as e:
-        log.error(f"Unexpected error: {e}", exc_info=True)
-        return jsonify({"error": "Error interno del servidor"}), 500
+        log.error(f"API error: {e}", exc_info=True)
+        return jsonify({"error": f"Error de API: {str(e)}"}), 502
 
 
 # ──────────────────────────────────────────────
