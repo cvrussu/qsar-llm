@@ -170,6 +170,23 @@ Autoridad de registro de plaguicidas de uso agrícola en Chile. La evaluación s
 
 ---
 
+## 6b. Dossiers y datos PÚBLICOS (no protegidos)
+
+Pregunta frecuente: *¿existe dossier no protegido, de acceso público?* **Sí.** Los informes de estudio GLP completos suelen estar protegidos (dato propietario del titular), pero las **evaluaciones oficiales** y, cada vez más, **los estudios/datos subyacentes** son públicos por normas de transparencia. La disponibilidad del dato crudo varía según la sustancia.
+
+| Fuente pública | Qué es público (no protegido) | Enlace |
+|---|---|---|
+| **Open EFSA** (Reg. UE 2019/1381, desde mar-2021) | RAR completo + **estudios y datos** del expediente. En **glifosato**, EFSA publicó todos los estudios del dossier de renovación. | https://open.efsa.europa.eu/ |
+| **US EPA — Regulations.gov (dockets)** | Evaluaciones de riesgo completas + gran parte del soporte. Glifosato: `EPA-HQ-OPP-2009-0361` | https://www.regulations.gov/docket/EPA-HQ-OPP-2009-0361 |
+| **JMPR — monografías** | Resúmenes toxicológicos **detallados** de los datos revisados. | https://apps.who.int/pesticide-residues-jmpr-database/ |
+| **FAO/WHO Specifications** | Identidad, pureza, impurezas y métodos (base de equivalencia). | https://www.fao.org/pest-and-pesticide-management/en/ |
+| **ECHA — portal de difusión REACH** | **Robust study summaries** y endpoints, públicos salvo reclamo de confidencialidad. | https://echa.europa.eu/information-on-chemicals |
+| **PPDB / PubChem / Codex** | Datos consolidados y referenciados, abiertos. | https://sitem.herts.ac.uk/aeru/ppdb/en/ |
+
+> **Regla:** para un expediente, estas evaluaciones oficiales públicas son documentación de apoyo válida y citable. El informe GLP íntegro sigue protegido para la mayoría de las moléculas; **glifosato** es el caso más abierto por presión de transparencia de la UE.
+
+---
+
 ## 7. Resumen de portales (acceso rápido)
 
 | Fuente | Tipo | URL raíz |
