@@ -54,8 +54,11 @@ Usuario → (1) RESOLVER identidad química → (2) RECUPERAR registros estructu
 - **Uso:** enlazar al **dossier regulatorio** original (ECHA/EPA) como cita de respaldo
 - **Acceso programático:** no hay API pública oficial; existe scraper comunitario `biobricks-ai/echemportal`. Mejor como enlace de verificación humana que como fuente automatizada.
 
-### 2.5 EFSA OpenFoodTox (complementario)
-- Dataset descargable + paquete R; aporta *reference points* y valores de referencia toxicológica (menos granular para irritación dérmica puntual).
+### 2.5 EFSA OpenFoodTox ⭐ (recomendado para reference points/ADI/ARfD)
+- **Acceso:** descarga bulk (6 planillas Excel) + archivo permanente en Zenodo (DOI): https://zenodo.org/records/8120114
+- **Cobertura:** *reference points* (NOAEL/LOAEL/BMDL/LD50/NOEC) y *reference values* (ADI/ARfD/AOEL) para +5.700 sustancias, incluyendo plaguicidas, ya citados al dictamen EFSA de origen
+- **Uso:** menos granular para endpoints puntuales tipo irritación dérmica, pero es la **mejor fuente estructurada** para ADI/ARfD/NOAEL — ver detalle completo en `RESERVORIOS_DATOS_MASIVOS.md` §1
+- **Integración:** al ser bulk (no REST en vivo), requiere una **ETL previa** (descargar planillas → cargar a tabla local/índice) en vez de una llamada API en cascada; se consulta desde esa tabla local igual que las demás fuentes, devolviendo el mismo formato `records[]`
 
 ---
 
@@ -68,10 +71,14 @@ GET /api/data?cas={CAS}&endpoint={skin_irritation|eye_irritation|...}&lang=es
 **Cadena de resolución (con fallback en cascada):**
 
 ```
+0. OpenFoodTox (tabla local, pre-cargada)  → reference points/ADI/ARfD + cita al dictamen EFSA
+   (solo aplica a endpoints tipo NOAEL/ADI/ARfD; se salta si el endpoint es otro, p.ej. irritación dérmica)
 1. QSAR Toolbox WebAPI   (si TOOLBOX_URL disponible)  → dato experimental + referencia
 2. CompTox Hazard API     (si BACKEND tiene CCTE_API_KEY) → skin-eye irritation + source
 3. PubChem GHS            (siempre, sin key)            → categoría GHS + fuente
 ```
+
+> El paso 0 es el único que lee de una tabla local (ETL previa desde OpenFoodTox), no de una API en vivo — ver `RESERVORIOS_DATOS_MASIVOS.md` para el detalle de carga.
 
 **Forma de respuesta (normalizada):**
 

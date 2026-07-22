@@ -2,11 +2,13 @@
 
 **Modelos y datasets abiertos que complementan el stack QSAR + el lado documental regulatorio.**
 
-Proyecto: QSAR LLM / Regulator.ia — UranoIA · Última actualización: 2026-07-19
+Proyecto: QSAR LLM / Regulator.ia — UranoIA · Última actualización: 2026-07-22
 
 > ⚠️ **Nota de encuadre regulatorio (léela primero):** casi todos estos modelos fueron entrenados para *drug discovery* / biomedicina, **no** para agroquímicos específicamente. Son útiles como **cribado (screening), priorización y apoyo a RAG**, pero **no** sustituyen las evaluaciones de referencia (JMPR/EFSA/EPA) ni los estudios GLP. Para uso regulatorio hay que **validar/fine-tunear con datos agroquímicos** y documentar la incertidumbre (dominio de aplicabilidad, guías OCDE). Ver `FUENTES_DOSSIERS_AGROQUIMICOS.md`.
 >
-> **Hallazgo (búsqueda en vivo en el HF Hub, 2026-07):** **no existe un modelo ni dataset específico de agroquímicos/pesticidas** con adopción relevante en el Hub. Las búsquedas por "pesticide/agrochemical/ecotoxicity" no devuelven repos consolidados. Esto confirma que la estrategia correcta es **usar los modelos cheminformáticos generales de abajo + fine-tuning con tus propios datos regulatorios**, no buscar un modelo "llave en mano" para el sector.
+> **Hallazgo 1 (búsqueda en vivo en el HF Hub, jul-2026):** **no existe un modelo ni dataset específico de agroquímicos/pesticidas** con adopción relevante en el Hub. Las búsquedas por "pesticide/agrochemical/ecotoxicity" no devuelven repos consolidados. Esto confirma que la estrategia correcta es **usar los modelos cheminformáticos generales de abajo + fine-tuning con tus propios datos regulatorios**, no buscar un modelo "llave en mano" para el sector.
+>
+> **Hallazgo 2 (búsqueda literal "QSAR" en el Hub, jul-2026):** tampoco existe un **modelo genérico "QSAR"** bien adoptado — y no podría existirlo, porque QSAR es una *metodología* (relación estructura-actividad), no una arquitectura de red neuronal como BERT o GPT. La búsqueda devolvió mayormente ruido: coincidencias de nombre de usuario (`qsardor` = voice models de videojuegos, sin relación química), spaces de demo (`QSARion` = agente genérico de un curso, no un modelo de química), y repos de prueba vacíos. El único resultado real y relevante fue `BenchmarkDatasets/QSAR_biodegradation` (dataset clásico de biodegradación, ~1.1K filas, **features anonimizadas sin SMILES/CAS** — solo sirve de benchmark de algoritmo, no para identificar sustancias). Conclusión: el "modelo QSAR" que necesitas ya lo tienes — el **OECD QSAR Toolbox** integrado en `app.py` — y lo que el Hub ofrece son los *bloques* (ChemBERTa, MoLFormer en §1) para construir modelos QSAR propios, no un QSAR preentrenado listo para usar.
 
 ---
 

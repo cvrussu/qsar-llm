@@ -218,6 +218,12 @@ Para soporte y consultoría: [UranoIA](https://uranoia.cl)
 
 ---
 
+## Documentación adicional
+
+Guías de referencia sobre fuentes de datos regulatorios, reservorios masivos y modelos de IA evaluados para Regulator.ia: ver [`docs/README.md`](./docs/README.md).
+
+---
+
 ## Roadmap futuro
 
 - [ ] Soporte para moléculas dibujadas (canvas SMILES)
