@@ -5,6 +5,8 @@
 Proyecto: QSAR LLM / Regulator.ia — UranoIA · Última actualización: 2026-07-19
 
 > ⚠️ **Nota de encuadre regulatorio (léela primero):** casi todos estos modelos fueron entrenados para *drug discovery* / biomedicina, **no** para agroquímicos específicamente. Son útiles como **cribado (screening), priorización y apoyo a RAG**, pero **no** sustituyen las evaluaciones de referencia (JMPR/EFSA/EPA) ni los estudios GLP. Para uso regulatorio hay que **validar/fine-tunear con datos agroquímicos** y documentar la incertidumbre (dominio de aplicabilidad, guías OCDE). Ver `FUENTES_DOSSIERS_AGROQUIMICOS.md`.
+>
+> **Hallazgo (búsqueda en vivo en el HF Hub, 2026-07):** **no existe un modelo ni dataset específico de agroquímicos/pesticidas** con adopción relevante en el Hub. Las búsquedas por "pesticide/agrochemical/ecotoxicity" no devuelven repos consolidados. Esto confirma que la estrategia correcta es **usar los modelos cheminformáticos generales de abajo + fine-tuning con tus propios datos regulatorios**, no buscar un modelo "llave en mano" para el sector.
 
 ---
 
@@ -16,10 +18,11 @@ Complementan y permiten **contrastar** las predicciones del QSAR Toolbox.
 | `seyonec/ChemBERTa-zinc-base-v1` | Transformer tipo RoBERTa sobre SMILES (ZINC/PubChem) | Base para fine-tuning de tox/propiedades; embeddings de moléculas |
 | `DeepChem/ChemBERTa-77M-MTR` | ChemBERTa 77M multi-task **regression** | Predicción de propiedades continuas (solubilidad, logP…) |
 | `DeepChem/ChemBERTa-77M-MLM` | ChemBERTa 77M *masked LM* | Backbone para clasificación tox (Tox21, ClinTox) |
-| `ibm/MoLFormer-XL-both-10pct` | Modelo fundacional molecular de IBM (SMILES) | Embeddings potentes / read-across por similitud latente |
+| `ibm-research/MoLFormer-XL-both-10pct` | Modelo fundacional molecular de IBM (SMILES), 46.8M params, Apache-2.0 | Embeddings potentes / read-across por similitud latente |
 
-- ChemBERTa: https://huggingface.co/seyonec/ChemBERTa-zinc-base-v1
-- MoLFormer-XL: https://huggingface.co/ibm/MoLFormer-XL-both-10pct
+- ChemBERTa (7.1M descargas): https://huggingface.co/seyonec/ChemBERTa-zinc-base-v1
+- ChemBERTa-77M-MTR (5.0M descargas): https://huggingface.co/DeepChem/ChemBERTa-77M-MTR
+- MoLFormer-XL (8.6M descargas, **namespace `ibm-research`**): https://huggingface.co/ibm-research/MoLFormer-XL-both-10pct
 - Ecosistema DeepChem (tutoriales Tox21/transfer learning): https://deepchem.io/
 
 > **Idea de uso:** un endpoint tipo "segunda opinión" que corre ChemBERTa/MolFormer sobre el SMILES y **compara** con el Toolbox; si divergen, se marca para revisión humana.
@@ -66,8 +69,8 @@ Para ingerir monografías/RAR/RED (PDF) y extraer entidades químicas y valores.
 | Repo | Función | Uso |
 |---|---|---|
 | `pruas/BENT-PubMedBERT-NER-Chemical` | NER de entidades **químicas** | Detectar nombres/CAS de sustancias en el texto del dossier |
-| `facebook/nougat-base` | OCR de documentos científicos (PDF→markdown, fórmulas/tablas) | Convertir PDFs escaneados de JMPR/EFSA a texto estructurado |
-| `ds4sd/docling-models` (IBM Docling) | Parsing de layout/tablas de PDF | Extraer tablas de LMR/endpoints de forma fiable |
+| `facebook/nougat-base` | OCR de documentos científicos (PDF→markdown, fórmulas/tablas) | Convertir PDFs escaneados de JMPR/EFSA a texto estructurado — ⚠️ **licencia CC-BY-NC-4.0 (no comercial)** |
+| `ds4sd/docling-models` (IBM Docling) | Parsing de layout/tablas de PDF (licencia permisiva) | Extraer tablas de LMR/endpoints — **preferible a Nougat para uso comercial** |
 
 - Chemical NER: https://huggingface.co/pruas/BENT-PubMedBERT-NER-Chemical
 - Nougat (OCR científico): https://huggingface.co/facebook/nougat-base
